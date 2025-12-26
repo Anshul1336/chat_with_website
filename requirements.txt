@@ -1,0 +1,9 @@
+flask
+mysqlclient
+langchain
+langchain-community
+langchain-pinecone
+sentence-transformers
+pinecone-client
+google-generativeai
+requests
