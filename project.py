@@ -19,7 +19,7 @@ app = Flask(__name__)
 db = MySQLdb.connect(
     host="localhost",
     user="root",
-    password="MySQL@1336",
+    password="*********",
     database="chat"
 )
 
@@ -230,3 +230,4 @@ def get_messages():
 if __name__ == '__main__':
     # app.run(debug=False, use_reloader=False)
     app.run(debug=True)
+
