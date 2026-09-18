@@ -1,125 +1,93 @@
-Chat with Any URL (RAG-based)
+# Chat with Any URL (RAG-based)
 
-This is a local Retrieval-Augmented Generation (RAG) project that allows users to paste a website URL and ask questions based on the content of that page.
-The system scrapes the webpage, generates embeddings, stores them in Pinecone, and answers questions using contextual retrieval with Google Gemini.
+A local Retrieval-Augmented Generation (RAG) project that lets users paste a website URL and ask questions based on the content of that page. The system scrapes the webpage, generates embeddings, stores them in Pinecone, and answers questions using contextual retrieval with Google Gemini.
 
-FEATURES
+## Features
 
-⦁	Chat with any public webpage
+- Chat with any public webpage
+- Context-aware answers (RAG)
+- Already-processed URLs are reused
+- Automatic cleanup when the Pinecone index limit is reached
+- Streamlit-based UI
+- Local MySQL database
 
-⦁	Context-aware answers (RAG)
+## Tech stack
 
-⦁	Already processed URLs are reused
+- **Backend:** Flask
+- **Frontend:** Streamlit
+- **Vector database:** Pinecone (free tier)
+- **LLM:** Google Gemini
+- **Embeddings:** Sentence Transformers
+- **Scraping:** ScrapingAnt
+- **Database:** MySQL (local)
+## Project files
 
-⦁	Automatic cleanup when Pinecone index limit is reached
+- `project.py` — Flask backend (API + Pinecone logic)
+- `streamlit_ui.py` — Streamlit frontend
+- `README.md` — Instructions
 
-⦁	Streamlit-based UI
+## Prerequisites
 
-⦁	Local MySQL database
+- Python 3.9 or above
+- MySQL installed locally
+- Pinecone account (free plan)
+- ScrapingAnt API key
+- Google Gemini API key
 
-TECH STACK
+## Pinecone limitation
 
-⦁	Backend: Flask
+Pinecone's free plan allows a maximum of 5 indexes. This project automatically deletes the oldest Pinecone index and its related database rows once that limit is hit. If Pinecone deletion fails, new URLs will not be processed.
+## Database setup
 
-⦁	Frontend: Streamlit
+Create the database:
 
-⦁	Vector Database: Pinecone (Free tier)
+```sql
+CREATE DATABASE chat;
+```
 
-⦁	LLM: Google Gemini
+Create the table:
 
-⦁	Embeddings: Sentence Transformers
+```sql
+CREATE TABLE data_url (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  url TEXT,
+  vd_index TEXT
+);
+```
 
-⦁	Scraping: ScrapingAnt
+The `messages` table is created automatically by the backend.
+## How to run
 
-⦁	Database: MySQL (local)
+```bash
+pip install -r requirements.txt
 
-PROJECT FILES
+# Start backend (runs at http://localhost:5000)
+python project.py
 
-⦁	project.py -> Flask backend (API + Pinecone logic)
+# Start frontend
+streamlit run streamlit_ui.py
+```
 
-⦁	streamlit_ui.py -> Streamlit frontend
+## How to use
 
-⦁	README.md -> Instructions
+1. Paste a website URL
+2. Wait for processing
+3. Ask questions related to that webpage
+4. Chat using retrieved context
 
-PREREQUISITES
+## Behavior notes
 
-⦁	Python 3.9 or above
+- Same URL is not processed again
+- Works locally only
+- Internet connection required
+- Some websites may block scraping
 
-⦁	MySQL installed locally
+## Common errors
 
-⦁	Pinecone account (Free plan)
+| Error | Cause |
+|---|---|
+| 403 Pinecone error | Index limit reached |
+| 500 error | Scraping failed or Pinecone sync delay |
+| JSONDecodeError | Backend crashed before response |
 
-⦁	ScrapingAnt API key
-
-⦁	Google Gemini API key
-
-IMPORTANT PINECONE LIMITATION
-
-⦁	Pinecone Free plan allows a maximum of 5 indexes
-
-⦁	This project automatically:
-
-  Deletes the oldest Pinecone index
- 	
-  Deletes related rows from the database
-
-⦁	If Pinecone deletion fails, new URLs will NOT be processed
-
-DATABASE SETUP
-
-⦁	Create database:
-
-  CREATE DATABASE chat;
-
-⦁	Create table:
-
- 	CREATE TABLE data_url (
- 	id INT AUTO_INCREMENT PRIMARY KEY,
- 	url TEXT,
- 	vd_index TEXT
- 	);
-
-The messages table is created automatically by the backend.
-
-HOW TO RUN
-
-⦁	requirements file:		pip install -r requirements.txt
-
-⦁	Start backend:		python project.py
-
-⦁	Backend runs at:		http://localhost:5000
-
-⦁	Start frontend:		streamlit run streamlit_ui.py
-
-HOW TO USE
-
-⦁	Paste a website URL
-
-⦁	Wait for processing
-
-⦁	Ask questions related to that webpage
-
-⦁	Chat using retrieved context
-
-BEHAVIOR NOTES
-
-⦁	Same URL is not processed again
-
-⦁	Works locally only
-
-⦁	Internet connection required
-
-⦁	Some websites may block scraping
-
-COMMON ERRORS
-
-⦁	403 Pinecone error → Index limit reached
-
-⦁	500 error → Scraping failed or Pinecone sync delay
-
-⦁	JSONDecodeError → Backend crashed before response
-
-
-
-⚠️ This project is designed to be run locally.
-Live deployment is not included due to API cost and index limits.
+> This project is designed to be run locally. Live deployment isn't included, due to API cost and index limits.
