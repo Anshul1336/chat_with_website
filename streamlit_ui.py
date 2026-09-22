@@ -1,7 +1,13 @@
 import streamlit as st
 import requests
+import os
 
-st.set_page_config(page_title="Chat with URL", layout="wide")
+try:
+    BACKEND_URL = st.secrets["BACKEND_URL"]
+except Exception:
+    BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:5000")
+
+st.set_page_config(page_title="Chat with URL")
 
 # --- SESSION STATE DEFAULTS ---
 if "chat_history" not in st.session_state:
@@ -48,7 +54,7 @@ if url_input:
     else:
         with st.spinner("🔍 Processing URL..."):
             response = requests.post(
-                "http://localhost:5000/data",
+                f"{BACKEND_URL}/data",
                 json={"url": url_input}
             )
 
@@ -61,42 +67,60 @@ if url_input:
             else:
                 try:
                     st.error(response.json().get("error", "Failed"))
-                except:
+                except Exception:
                     st.error("Backend error. Check Flask terminal.")
 
 # --- CHAT UI ---
 if st.session_state.url:
     st.subheader("💬 Ask a Question")
-    user_query = st.text_input("Type your question", key="query_input")
-    if st.button("Send"):
 
-    # if user_query:
-        chat_res = requests.post("http://localhost:5000/data/chat", json={
-            "url": st.session_state.url,
-            "query": user_query
-        })
-
-        if chat_res.status_code == 200:
-            data = chat_res.json()
-            answer = data.get("response", "No response.")
-            st.session_state.chat_history.append({"role": "user", "content": user_query})
-            st.session_state.chat_history.append({"role": "bot", "content": answer})
-        else:
-            st.error(chat_res.json().get("error", "Something went wrong."))
+    # --- Latest Answer, shown above the history ---
+    if st.session_state.chat_history:
+        latest = st.session_state.chat_history[-1]
+        if latest["role"] == "assistant":
+            st.success(f"**Latest Answer:** {latest['content']}")
 
     # --- Chat History Section ---
     with st.expander("📜 Full Chat History", expanded=True):
-        for msg in st.session_state.chat_history[::-1]:  # Newest at bottom
-            if msg["role"] == "user":
-                st.markdown(f"🧑 **You:** {msg['content']}")
-            elif msg["role"] == "bot":
-                st.markdown(f"🤖 **Bot:** {msg['content']}")
+        for msg in st.session_state.chat_history:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
 
-    # --- Latest Answer Highlight ---
-    if st.session_state.chat_history:
-        latest = st.session_state.chat_history[-1]
-        if latest["role"] == "bot":
-            st.success(f"**Latest Answer:** {latest['content']}")
+    user_query = st.chat_input("Type your question")
+    if user_query:
+        with st.spinner("🤔 Thinking..."):
+            chat_res = requests.post(f"{BACKEND_URL}/data/chat", json={
+                "url": st.session_state.url,
+                "query": user_query
+            })
+
+            if chat_res.status_code == 200:
+                data = chat_res.json()
+                answer = data.get("response", "No response.")
+                st.session_state.chat_history.append({"role": "user", "content": user_query})
+                st.session_state.chat_history.append({"role": "assistant", "content": answer})
+                st.rerun()
+            else:
+                try:
+                    st.error(chat_res.json().get("error", "Something went wrong."))
+                except Exception:
+                    st.error("Backend error. Check Flask terminal.")
 
 else:
     st.info("🔗 Enter a URL above to begin chatting.")
+
+# --- All-time history across every URL, pulled straight from the backend ---
+with st.expander("🗂️ All-Time History (every URL ever processed)"):
+    if st.button("Load Full History"):
+        resp = requests.get(f"{BACKEND_URL}/data/messages")
+        if resp.status_code == 200:
+            all_messages = resp.json()
+            if not all_messages:
+                st.info("No messages recorded yet.")
+            for m in all_messages:
+                st.markdown(f"**{m['url']}** — {m['tim']}")
+                st.markdown(f"🧑 {m['prompt']}")
+                st.markdown(f"🤖 {m['response']}")
+                st.divider()
+        else:
+            st.error("Failed to load history.")
