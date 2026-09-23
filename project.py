@@ -5,10 +5,8 @@ from langchain_community.document_loaders import ScrapingAntLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 from pinecone import Pinecone, ServerlessSpec
-from langchain_pinecone import PineconeVectorStore
 from uuid import uuid4
 import google.generativeai as genai
-from langchain_community.document_loaders import RecursiveUrlLoader
 import time
 import threading
 
@@ -175,7 +173,6 @@ def chat():
     data = request.json
     url = data.get('url')
     query = data.get('query')
-      # 🔥 MUST be passed now
     if not query or not url:
         return jsonify({"error": "Both query and url are required"}), 400
 
@@ -193,31 +190,27 @@ def chat():
 
     index = pc.Index(index_name)
 
-    results = index.query(
-        vector=vector_query,
-        top_k=5,
-        include_metadata=True
-    )
+    try:
+        results = index.query(
+            vector=vector_query,
+            top_k=5,
+            include_metadata=True
+        )
 
-    # comparison
-    context = ''
-    for result in results.matches:
-        context += result['metadata']['text'] + '\n'
+        # comparison
+        context = ''
+        for match in results.matches:
+            context += match['metadata']['text'] + '\n'
 
-    prompt = f"{context} Now according to the above context answer some questions : {query}"
+        prompt = f"{context} Now according to the above context answer some questions : {query}"
 
-    genai.configure(
-    api_key=os.getenv("GEMINI_API_KEY")
-    )
-    response = genai.GenerativeModel("gemini-flash-latest").generate_content(prompt)
+        genai.configure(
+        api_key=os.getenv("GEMINI_API_KEY")
+        )
+        response = genai.GenerativeModel("gemini-flash-latest").generate_content(prompt)
+    except Exception as e:
+        return jsonify({"error": f"Failed to generate answer: {e}"}), 502
 
-    cur.execute("SELECT id FROM data_url WHERE url = ?", (url,))
-    result = cur.fetchone()
-
-    if not result:
-        return jsonify({"error": "data_id not found for given URL"}), 404
-
-    data_id = result['id']
     cur.execute(
         "INSERT INTO messages(prompt, response, data_id) VALUES (?, ?, ?)",
         (query, response.text, data_id)
